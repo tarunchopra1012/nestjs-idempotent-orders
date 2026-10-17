@@ -1,3 +1,5 @@
+// Must stay the first import: loads .env before any module reads process.env.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { configureApp } from './app.setup';

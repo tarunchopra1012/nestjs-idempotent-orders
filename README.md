@@ -19,6 +19,7 @@ Requires Docker (Colima) and Node 20+.
 
 ```bash
 npm install
+cp .env.example .env  # optional: the defaults already match docker-compose.yml
 npm run db:start      # PostgreSQL 17 in Docker on port 5433
 npm run start:dev     # API on http://localhost:3000
 ```
@@ -45,4 +46,4 @@ npm test              # unit tests
 | `npm run db:reset` | Delete all data and start fresh |
 | `npm run db:psql` | Open a SQL prompt in the container |
 
-Connection settings are in `.env.example`; the defaults already match `docker-compose.yml`.
+Settings are read from environment variables, loaded from `.env` at startup (and by the e2e tests) when that file exists. See `.env.example` for every variable; the defaults already match `docker-compose.yml`.
