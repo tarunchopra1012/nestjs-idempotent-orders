@@ -1,4 +1,4 @@
-# Order Ops Copilot
+# nestjs-idempotent-orders
 
 A NestJS + PostgreSQL practice project for distributed-correctness patterns: race conditions, idempotency keys, locking, outbox and reconciliation.
 

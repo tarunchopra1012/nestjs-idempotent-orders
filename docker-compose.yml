@@ -1,7 +1,9 @@
+name: nestjs-idempotent-orders
+
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: order-ops-postgres
+    container_name: idempotent-orders-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

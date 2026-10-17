@@ -1,5 +1,5 @@
 {
-  "name": "order-ops-copilot",
+  "name": "nestjs-idempotent-orders",
   "version": "0.0.1",
   "description": "NestJS + PostgreSQL practice project for idempotency, locking and other distributed-correctness patterns",
   "author": "",

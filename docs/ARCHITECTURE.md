@@ -1,4 +1,4 @@
-# Architecture — Order Ops Copilot
+# Architecture — nestjs-idempotent-orders
 
 A small NestJS + PostgreSQL service used to practise **distributed correctness**.
 Right now it exposes two ways to create an order:
