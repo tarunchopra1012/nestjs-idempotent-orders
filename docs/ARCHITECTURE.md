@@ -114,6 +114,7 @@ erDiagram
         int response_status "stored on first success"
         jsonb response_body "replayed on every retry"
         timestamptz created_at
+        timestamptz expires_at "created_at + TTL (default 24 h); indexed"
     }
 ```
 
@@ -206,7 +207,8 @@ flowchart TD
 | `src/app.setup.ts` | Global `ValidationPipe`, shared by `main.ts` and the e2e tests |
 | `src/app.module.ts` | Root module; TypeORM connection (env vars, defaults match Docker) |
 | `src/orders/orders.controller.ts` | HTTP layer: header check, status code, replay header |
-| `src/orders/orders.service.ts` | Naive path, idempotent path, request fingerprinting |
+| `src/orders/orders.service.ts` | Naive path, idempotent path, request fingerprinting, key TTL |
+| `src/orders/idempotency-key-cleanup.service.ts` | Hourly job deleting expired keys in batches (`FOR UPDATE SKIP LOCKED`) |
 | `src/orders/order.entity.ts` | `orders` table |
 | `src/orders/idempotency-key.entity.ts` | `idempotency_keys` table with composite primary key |
 | `src/orders/create-order.dto.ts` | Request body rules (class-validator) |
@@ -224,7 +226,6 @@ flowchart TD
 |---|---|---|
 | The whole operation runs in one DB transaction | Can't hold a transaction open around a Stripe or Salesforce call; needs an *in-progress* state and recovery | `/idempotency` 2 |
 | `orders.external_ref` has no unique constraint | A second safety net at the business-key level | `/idempotency` 3 |
-| No expiry on `idempotency_keys` | The table grows forever; keys usually expire after 24–72 h | `/idempotency` 2 |
 | `scope` is a fixed string | In a multi-tenant API it must include the client or tenant id | `/idempotency` 2 |
 | No outbox | Events to other systems can be lost or sent twice | `/idempotency` 6 |
 | `synchronize: true` | Fine for learning; production uses migrations | — |

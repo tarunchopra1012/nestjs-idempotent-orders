@@ -18,6 +18,11 @@ export interface IdempotentResult {
   replayed: boolean;
 }
 
+// How long a key protects against retries. Stripe uses 24 hours.
+export const IDEMPOTENCY_KEY_TTL_HOURS = Number(
+  process.env.IDEMPOTENCY_KEY_TTL_HOURS ?? 24,
+);
+
 // Stands in for the slow work real code does between "check" and "write"
 // (calling Salesforce, Stripe, ShipStation…). It widens the race window.
 const simulateUpstreamCall = () => new Promise((r) => setTimeout(r, 50));
@@ -107,12 +112,19 @@ export class OrdersService {
     return this.dataSource.transaction(async (tx) => {
       // 1. Claim the key. If another transaction holds the same (scope, key),
       //    Postgres makes this INSERT wait until that transaction commits or rolls back.
+      //    An expired key is taken over (its old response is cleared); a live one is left alone.
       const claimed: unknown[] = await tx.query(
-        `INSERT INTO idempotency_keys (scope, key, request_hash)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (scope, key) DO NOTHING
+        `INSERT INTO idempotency_keys (scope, key, request_hash, expires_at)
+         VALUES ($1, $2, $3, now() + make_interval(hours => $4))
+         ON CONFLICT (scope, key) DO UPDATE
+           SET request_hash    = EXCLUDED.request_hash,
+               response_status = NULL,
+               response_body   = NULL,
+               created_at      = now(),
+               expires_at      = EXCLUDED.expires_at
+           WHERE idempotency_keys.expires_at <= now()
          RETURNING key`,
-        [scope, key, requestHash],
+        [scope, key, requestHash, IDEMPOTENCY_KEY_TTL_HOURS],
       );
 
       // 2. Someone already processed this key: replay their response.

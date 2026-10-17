@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryColumn,
+} from 'typeorm';
 
 /**
  * One row per (scope, key) the API has ever processed.
@@ -28,4 +34,15 @@ export class IdempotencyKey {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
+
+  // After this moment the key can be reused and the cleanup job may delete it.
+  // Indexed because the cleanup job scans by it every hour.
+  @Index('idx_idempotency_keys_expires_at')
+  // The default only backfills rows that existed before this column; new rows get the configured TTL.
+  @Column({
+    name: 'expires_at',
+    type: 'timestamptz',
+    default: () => "now() + interval '24 hours'",
+  })
+  expiresAt: Date;
 }
