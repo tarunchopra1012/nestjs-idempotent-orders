@@ -7,6 +7,7 @@ Right now it exposes two ways to create an order:
 |---|---|
 | `POST /orders/naive` | The bug: check-then-insert creates duplicates under concurrency |
 | `POST /orders` (with `Idempotency-Key`) | The fix: the database decides who goes first; retries get the same response |
+| `GET /orders`, `GET /orders/:id` | Reads with keyset (cursor) pagination on `(created_at, id)` |
 
 ---
 
@@ -209,6 +210,8 @@ flowchart TD
 | `src/orders/order.entity.ts` | `orders` table |
 | `src/orders/idempotency-key.entity.ts` | `idempotency_keys` table with composite primary key |
 | `src/orders/create-order.dto.ts` | Request body rules (class-validator) |
+| `src/orders/list-orders.query.ts` | Query rules for `GET /orders` (limit, cursor, externalRef) |
+| `src/orders/order-cursor.ts` | Encodes/decodes the opaque pagination cursor |
 | `test/idempotency.e2e-spec.ts` | Fires 20 concurrent requests against real Postgres |
 | `scripts/race-demo.mjs` | Prints naive vs idempotent results against a running API |
 | `docker-compose.yml` | PostgreSQL 17 on host port 5433 with a named volume |

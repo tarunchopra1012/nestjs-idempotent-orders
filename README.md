@@ -10,8 +10,10 @@ A NestJS + PostgreSQL practice project for distributed-correctness patterns: rac
 |---|---|
 | `POST /orders/naive` | Check-then-insert. Creates duplicates under concurrency (the bug) |
 | `POST /orders` | Requires an `Idempotency-Key` header. One order per key; retries get the stored response |
+| `GET /orders` | Newest first, cursor pagination (`limit` 1–100, `cursor`, optional `externalRef`) |
+| `GET /orders/:id` | One order; 404 if missing, 400 if the id isn't a UUID |
 
-Body for both: `{ "externalRef": "SF-1001", "total": 49.99 }`
+Body for both `POST` endpoints: `{ "externalRef": "SF-1001", "total": 49.99 }`
 
 ## Run it
 

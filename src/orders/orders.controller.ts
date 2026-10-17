@@ -2,18 +2,33 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
+  Param,
+  ParseUUIDPipe,
   Post,
+  Query,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { CreateOrderDto } from './create-order.dto';
+import { ListOrdersQuery } from './list-orders.query';
 import { OrdersService } from './orders.service';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly orders: OrdersService) {}
+
+  @Get()
+  list(@Query() query: ListOrdersQuery) {
+    return this.orders.list(query);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.orders.findOne(id);
+  }
 
   @Post('naive')
   @HttpCode(201)

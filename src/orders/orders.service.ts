@@ -1,9 +1,15 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { createHash } from 'node:crypto';
 import { DataSource, Repository } from 'typeorm';
 import { CreateOrderDto } from './create-order.dto';
 import { IdempotencyKey } from './idempotency-key.entity';
+import { ListOrdersQuery } from './list-orders.query';
+import { decodeCursor, encodeCursor } from './order-cursor';
 import { Order } from './order.entity';
 
 export interface IdempotentResult {
@@ -37,6 +43,43 @@ export class OrdersService {
     @InjectRepository(Order) private readonly orders: Repository<Order>,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
+
+  async findOne(id: string) {
+    const order = await this.orders.findOneBy({ id });
+    if (!order) throw new NotFoundException(`Order ${id} not found.`);
+    return toResponse(order);
+  }
+
+  /**
+   * Newest first, keyset pagination: each page continues strictly after the
+   * cursor's (createdAt, id), so inserts between requests never cause skipped
+   * or repeated rows the way OFFSET pagination can.
+   */
+  async list(query: ListOrdersQuery) {
+    const qb = this.orders
+      .createQueryBuilder('o')
+      .orderBy('o.createdAt', 'DESC')
+      .addOrderBy('o.id', 'DESC')
+      .limit(query.limit + 1); // one extra row tells us whether another page exists
+
+    if (query.externalRef) {
+      qb.andWhere('o.externalRef = :externalRef', {
+        externalRef: query.externalRef,
+      });
+    }
+    if (query.cursor) {
+      const cursor = decodeCursor(query.cursor);
+      qb.andWhere('(o.createdAt, o.id) < (:createdAt, :id)', cursor);
+    }
+
+    const rows = await qb.getMany();
+    const hasMore = rows.length > query.limit;
+    const page = hasMore ? rows.slice(0, query.limit) : rows;
+    return {
+      data: page.map(toResponse),
+      nextCursor: hasMore ? encodeCursor(page[page.length - 1]) : null,
+    };
+  }
 
   /** Lesson 1: check-then-insert. Looks correct, breaks under concurrency. */
   async createNaive(dto: CreateOrderDto) {
